@@ -1,26 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Inter:wght@400;600;700&display=swap');
+
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════
+   Senior theme dark-mode overrides
+   (applied via body.theme-senior class)
+   ═══════════════════════════════════════════════ */
+body.theme-senior .bubble-bg::before { background: var(--primary); opacity: 0.06; }
+body.theme-senior .bubble-bg::after  { background: var(--secondary); opacity: 0.05; }
+
+/* ═══════════════════════════════════════════════
+   DEFAULT / FALLBACK (before hydration)
+   ═══════════════════════════════════════════════ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fef9f0;
+  --foreground: #2d2a26;
+  --primary: #6c63ff;
+  --primary-light: #a5a0ff;
+  --secondary: #ff6b9d;
+  --accent-green: #4ecdc4;
+  --accent-yellow: #ffe66d;
+  --accent-orange: #ff8a5c;
+  --accent-blue: #45b7d1;
+  --accent-purple: #a06cd5;
+  --card-bg: #ffffff;
+  --card-shadow: rgba(108, 99, 255, 0.1);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-secondary: var(--secondary);
+  --color-accent-green: var(--accent-green);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-accent-orange: var(--accent-orange);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-purple: var(--accent-purple);
+  --color-card-bg: var(--card-bg);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Comic Neue', cursive, Arial, sans-serif;
+  overflow-x: hidden;
+  transition: background-color 0.3s, color 0.3s;
 }
+
+/* ─── Dyslexic font override ─── */
+body.dyslexic-font {
+  font-family: 'OpenDyslexic', 'Comic Neue', cursive, sans-serif !important;
+  letter-spacing: 0.05em;
+  word-spacing: 0.15em;
+  line-height: 1.8;
+}
+
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Bold.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
+}
+
+/* ─── Senior theme card overrides ─── */
+body.theme-senior .bg-white { background-color: var(--card-bg) !important; }
+body.theme-senior .bg-white\/80 { background-color: rgba(30, 31, 51, 0.8) !important; }
+body.theme-senior .bg-white\/50 { background-color: rgba(30, 31, 51, 0.5) !important; }
+body.theme-senior .shadow-inner { box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
+body.theme-senior .text-gray-500 { color: #9ca3af !important; }
+body.theme-senior .text-gray-400 { color: #6b7280 !important; }
+body.theme-senior .text-gray-300 { color: #4b5563 !important; }
+body.theme-senior .bg-gray-100 { background-color: #252640 !important; }
+body.theme-senior .bg-gray-200 { background-color: #2d2e4a !important; }
+body.theme-senior .border-primary\/30 { border-color: rgba(124, 106, 255, 0.3) !important; }
+body.theme-senior input { background-color: #1e1f33 !important; color: #e8e6f0 !important; }
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--primary-light); border-radius: 4px; }
+
+/* ─── Bubble background ─── */
+.bubble-bg {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 0; overflow: hidden;
+}
+.bubble-bg::before, .bubble-bg::after {
+  content: ''; position: absolute; border-radius: 50%; opacity: 0.08;
+}
+.bubble-bg::before {
+  width: 300px; height: 300px; background: var(--primary); top: -80px; right: -80px;
+}
+.bubble-bg::after {
+  width: 200px; height: 200px; background: var(--secondary); bottom: -60px; left: -60px;
+}
+
+/* ─── Animations ─── */
+@keyframes starBurst {
+  0% { transform: scale(0) rotate(0deg); opacity: 1; }
+  50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+  100% { transform: scale(1) rotate(360deg); opacity: 1; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+@keyframes confetti-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-wiggle { animation: wiggle 0.5s ease-in-out; }
+.animate-star-burst { animation: starBurst 0.6s ease-out forwards; }
