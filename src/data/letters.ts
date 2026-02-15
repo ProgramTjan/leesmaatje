@@ -1,6 +1,6 @@
 /**
  * Dutch letter data for phonics exercises.
- * 
+ *
  * Based on structured literacy approach:
  * - Start with most common, visually distinct letters
  * - Group by difficulty level
@@ -68,17 +68,48 @@ export const letterCombos: LetterComboData[] = [
   { combo: 'aa', sound: 'aa', exampleWord: 'maan', exampleEmoji: '🌙', level: 2 },
   { combo: 'ie', sound: 'ie', exampleWord: 'bier', exampleEmoji: '🥤', level: 2 },
   { combo: 'oe', sound: 'oe', exampleWord: 'boek', exampleEmoji: '📖', level: 2 },
+  { combo: 'uu', sound: 'uu', exampleWord: 'vuur', exampleEmoji: '🔥', level: 2 },
+  { combo: 'eu', sound: 'eu', exampleWord: 'neus', exampleEmoji: '👃', level: 2 },
+  { combo: 'ui', sound: 'ui', exampleWord: 'huis', exampleEmoji: '🏠', level: 2 },
+  { combo: 'an', sound: 'an', exampleWord: 'pan', exampleEmoji: '🍳', level: 2 },
+  { combo: 'en', sound: 'en', exampleWord: 'pen', exampleEmoji: '🖊️', level: 2 },
+  { combo: 'in', sound: 'in', exampleWord: 'kin', exampleEmoji: '😊', level: 2 },
+  { combo: 'on', sound: 'on', exampleWord: 'ton', exampleEmoji: '🛢️', level: 2 },
 
   // Level 3: Trickier combos
   { combo: 'ou', sound: 'ou', exampleWord: 'hout', exampleEmoji: '🪵', level: 3 },
   { combo: 'au', sound: 'au', exampleWord: 'blauw', exampleEmoji: '🔵', level: 3 },
   { combo: 'ei', sound: 'ei', exampleWord: 'ei', exampleEmoji: '🥚', level: 3 },
   { combo: 'ij', sound: 'ij', exampleWord: 'ijs', exampleEmoji: '🍦', level: 3 },
-  { combo: 'eu', sound: 'eu', exampleWord: 'neus', exampleEmoji: '👃', level: 3 },
   { combo: 'ch', sound: 'ch', exampleWord: 'chocola', exampleEmoji: '🍫', level: 3 },
   { combo: 'sch', sound: 'sch', exampleWord: 'school', exampleEmoji: '🏫', level: 3 },
   { combo: 'ng', sound: 'ng', exampleWord: 'ring', exampleEmoji: '💍', level: 3 },
   { combo: 'nk', sound: 'nk', exampleWord: 'bank', exampleEmoji: '🪑', level: 3 },
+  { combo: 'aai', sound: 'aai', exampleWord: 'draai', exampleEmoji: '🔄', level: 3 },
+  { combo: 'ooi', sound: 'ooi', exampleWord: 'mooi', exampleEmoji: '✨', level: 3 },
+  { combo: 'oei', sound: 'oei', exampleWord: 'groei', exampleEmoji: '🌱', level: 3 },
+  { combo: 'ouw', sound: 'ouw', exampleWord: 'vrouw', exampleEmoji: '👩', level: 3 },
+  { combo: 'auw', sound: 'auw', exampleWord: 'pauw', exampleEmoji: '🦚', level: 3 },
+  { combo: 'ieuw', sound: 'ieuw', exampleWord: 'nieuw', exampleEmoji: '🆕', level: 3 },
+  { combo: 'uw', sound: 'uw', exampleWord: 'duw', exampleEmoji: '👋', level: 3 },
+  { combo: 'bl', sound: 'bl', exampleWord: 'bloem', exampleEmoji: '🌸', level: 3 },
+  { combo: 'br', sound: 'br', exampleWord: 'brood', exampleEmoji: '🍞', level: 3 },
+  { combo: 'dr', sound: 'dr', exampleWord: 'draak', exampleEmoji: '🐉', level: 3 },
+  { combo: 'fl', sound: 'fl', exampleWord: 'fluit', exampleEmoji: '🎶', level: 3 },
+  { combo: 'fr', sound: 'fr', exampleWord: 'fruit', exampleEmoji: '🍎', level: 3 },
+  { combo: 'gl', sound: 'gl', exampleWord: 'glas', exampleEmoji: '🥛', level: 3 },
+  { combo: 'gr', sound: 'gr', exampleWord: 'gras', exampleEmoji: '🌿', level: 3 },
+  { combo: 'kl', sound: 'kl', exampleWord: 'klok', exampleEmoji: '🕐', level: 3 },
+  { combo: 'kr', sound: 'kr', exampleWord: 'kroon', exampleEmoji: '👑', level: 3 },
+  { combo: 'pl', sound: 'pl', exampleWord: 'plant', exampleEmoji: '🌿', level: 3 },
+  { combo: 'pr', sound: 'pr', exampleWord: 'prins', exampleEmoji: '🤴', level: 3 },
+  { combo: 'sl', sound: 'sl', exampleWord: 'slak', exampleEmoji: '🐌', level: 3 },
+  { combo: 'sn', sound: 'sn', exampleWord: 'sneeuw', exampleEmoji: '❄️', level: 3 },
+  { combo: 'sp', sound: 'sp', exampleWord: 'spin', exampleEmoji: '🕷️', level: 3 },
+  { combo: 'st', sound: 'st', exampleWord: 'ster', exampleEmoji: '⭐', level: 3 },
+  { combo: 'tr', sound: 'tr', exampleWord: 'trein', exampleEmoji: '🚂', level: 3 },
+  { combo: 'vl', sound: 'vl', exampleWord: 'vlieg', exampleEmoji: '🪰', level: 3 },
+  { combo: 'zw', sound: 'zw', exampleWord: 'zwaan', exampleEmoji: '🦢', level: 3 },
 ];
 
 /**
@@ -98,7 +129,7 @@ export function getDistractors(
   pool?: LetterData[]
 ): LetterData[] {
   const available = (pool || letters).filter(l => l.letter !== correctLetter.letter);
-  
+
   // Confusing pairs for dyslexic readers
   const confusingPairs: Record<string, string[]> = {
     'b': ['d', 'p'],
@@ -122,7 +153,7 @@ export function getDistractors(
   };
 
   const distractors: LetterData[] = [];
-  
+
   // First, try to include confusing pairs
   const confusing = confusingPairs[correctLetter.letter] || [];
   for (const c of confusing) {

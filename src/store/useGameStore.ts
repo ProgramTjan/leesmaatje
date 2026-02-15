@@ -118,6 +118,11 @@ interface GameState extends ProfileData {
   playerName: string;
   _savedProfiles: Record<string, ProfileData>;
 
+  // ── Parent dashboard ──
+  parentPin: string | null;
+  setParentPin: (pin: string) => void;
+  getProfileData: (profileId: string) => ProfileData;
+
   createProfile: (name: string, avatar: string, ageGroup: AgeGroup, colorTheme?: string) => void;
   selectProfile: (id: string) => void;
   logout: () => void;
@@ -181,6 +186,19 @@ export const useGameStore = create<GameState>()(
       activeProfileId: null,
       playerName: '',
       _savedProfiles: {},
+
+      // ── Parent dashboard ──
+      parentPin: null,
+      setParentPin: (pin) => set({ parentPin: pin }),
+      getProfileData: (profileId) => {
+        const state = get();
+        // If it's the active profile, return current state
+        if (state.activeProfileId === profileId) {
+          return extractProfileData(state);
+        }
+        // Otherwise return saved data
+        return state._savedProfiles[profileId] || defaultProfileData();
+      },
 
       createProfile: (name, avatar, ageGroup, colorTheme) => {
         const state = get();
@@ -382,6 +400,7 @@ export const useGameStore = create<GameState>()(
           profiles: state.profiles,
           activeProfileId: state.activeProfileId,
           playerName: state.playerName,
+          parentPin: state.parentPin,
           _savedProfiles: savedProfiles,
           stars: state.stars,
           currentStreak: state.currentStreak,

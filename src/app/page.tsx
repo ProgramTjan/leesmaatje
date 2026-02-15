@@ -263,6 +263,24 @@ export default function Home() {
       <motion.div className="flex justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
         <Mascot mood={isSenior ? 'thinking' : 'happy'} size={isSenior ? 'md' : 'lg'} />
       </motion.div>
+
+      {/* Parent dashboard link */}
+      <motion.div className="flex justify-center mt-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}>
+        <Link href="/ouders">
+          <motion.div
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              isSenior
+                ? 'text-gray-500 hover:text-gray-300 hover:bg-[#1e1e3a]'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-white/50'
+            }`}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <span>📊</span>
+            <span>Ouder-dashboard</span>
+          </motion.div>
+        </Link>
+      </motion.div>
     </div>
   );
 }
