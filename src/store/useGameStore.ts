@@ -6,11 +6,18 @@ import { checkBadgeUnlocks, type Badge } from '@/data/badges';
 
 export type AgeGroup = 'groep3-5' | 'groep6-8';
 
+export interface LevelStats {
+  correct: number;
+  total: number;
+}
+
 export interface ExerciseProgress {
   completed: number;
   correct: number;
   total: number;
   lastPlayed: string | null;
+  /** Rolling window of recent answers per level (for adaptive difficulty) */
+  recentByLevel: Record<number, LevelStats>;
 }
 
 const emptyProgress = (): ExerciseProgress => ({
@@ -18,6 +25,7 @@ const emptyProgress = (): ExerciseProgress => ({
   correct: 0,
   total: 0,
   lastPlayed: null,
+  recentByLevel: {},
 });
 
 export interface Profile {
@@ -136,13 +144,13 @@ interface GameState extends ProfileData {
   incrementStreak: () => void;
   resetStreak: () => void;
 
-  updateLettersProgress: (correct: boolean) => void;
-  updateLettergrepenProgress: (correct: boolean) => void;
-  updateWoordenProgress: (correct: boolean) => void;
-  updateZinnenProgress: (correct: boolean) => void;
-  updateFlitslezenProgress: (correct: boolean) => void;
-  updateSpellingregelsProgress: (correct: boolean) => void;
-  updateWoorddelenProgress: (correct: boolean) => void;
+  updateLettersProgress: (correct: boolean, level?: number) => void;
+  updateLettergrepenProgress: (correct: boolean, level?: number) => void;
+  updateWoordenProgress: (correct: boolean, level?: number) => void;
+  updateZinnenProgress: (correct: boolean, level?: number) => void;
+  updateFlitslezenProgress: (correct: boolean, level?: number) => void;
+  updateSpellingregelsProgress: (correct: boolean, level?: number) => void;
+  updateWoorddelenProgress: (correct: boolean, level?: number) => void;
 
   addPerfectRound: () => void;
 
@@ -163,17 +171,43 @@ interface GameState extends ProfileData {
 
 /* ─── Progress updater helper ─── */
 
+const RECENT_WINDOW = 20; // keep last 20 answers per level
+
 function makeProgressUpdater(progressKey: ProgressKey) {
-  return (correct: boolean) =>
-    (state: GameState) => ({
-      [progressKey]: {
-        ...state[progressKey],
-        completed: state[progressKey].completed + 1,
-        correct: state[progressKey].correct + (correct ? 1 : 0),
-        total: state[progressKey].total + 1,
-        lastPlayed: new Date().toISOString(),
-      },
-    });
+  return (correct: boolean, level?: number) =>
+    (state: GameState) => {
+      const prev = state[progressKey];
+      const recentByLevel = { ...prev.recentByLevel };
+
+      // Track per-level stats if level is provided
+      if (level !== undefined) {
+        const existing = recentByLevel[level] ?? { correct: 0, total: 0 };
+        const newTotal = existing.total + 1;
+        const newCorrect = existing.correct + (correct ? 1 : 0);
+
+        // If we exceed the window, scale down proportionally to keep the ratio meaningful
+        if (newTotal > RECENT_WINDOW) {
+          const scale = RECENT_WINDOW / newTotal;
+          recentByLevel[level] = {
+            correct: Math.round(newCorrect * scale),
+            total: RECENT_WINDOW,
+          };
+        } else {
+          recentByLevel[level] = { correct: newCorrect, total: newTotal };
+        }
+      }
+
+      return {
+        [progressKey]: {
+          ...prev,
+          completed: prev.completed + 1,
+          correct: prev.correct + (correct ? 1 : 0),
+          total: prev.total + 1,
+          lastPlayed: new Date().toISOString(),
+          recentByLevel,
+        },
+      };
+    };
 }
 
 /* ─── Store ─── */
@@ -314,13 +348,13 @@ export const useGameStore = create<GameState>()(
         })),
       resetStreak: () => set({ currentStreak: 0 }),
 
-      updateLettersProgress: (c) => set(makeProgressUpdater('lettersProgress')(c)),
-      updateLettergrepenProgress: (c) => set(makeProgressUpdater('lettergrepenProgress')(c)),
-      updateWoordenProgress: (c) => set(makeProgressUpdater('woordenProgress')(c)),
-      updateZinnenProgress: (c) => set(makeProgressUpdater('zinnenProgress')(c)),
-      updateFlitslezenProgress: (c) => set(makeProgressUpdater('flitslezenProgress')(c)),
-      updateSpellingregelsProgress: (c) => set(makeProgressUpdater('spellingregelsProgress')(c)),
-      updateWoorddelenProgress: (c) => set(makeProgressUpdater('woorddelenProgress')(c)),
+      updateLettersProgress: (c, lvl) => set(makeProgressUpdater('lettersProgress')(c, lvl)),
+      updateLettergrepenProgress: (c, lvl) => set(makeProgressUpdater('lettergrepenProgress')(c, lvl)),
+      updateWoordenProgress: (c, lvl) => set(makeProgressUpdater('woordenProgress')(c, lvl)),
+      updateZinnenProgress: (c, lvl) => set(makeProgressUpdater('zinnenProgress')(c, lvl)),
+      updateFlitslezenProgress: (c, lvl) => set(makeProgressUpdater('flitslezenProgress')(c, lvl)),
+      updateSpellingregelsProgress: (c, lvl) => set(makeProgressUpdater('spellingregelsProgress')(c, lvl)),
+      updateWoorddelenProgress: (c, lvl) => set(makeProgressUpdater('woorddelenProgress')(c, lvl)),
 
       addPerfectRound: () => set((s) => ({ perfectRounds: s.perfectRounds + 1 })),
 
@@ -390,7 +424,7 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'leesmaatje-storage',
-      version: 3,
+      version: 4,
       partialize: (state) => {
         const savedProfiles = { ...state._savedProfiles };
         if (state.activeProfileId) {
@@ -469,6 +503,30 @@ export const useGameStore = create<GameState>()(
             spellingregelsProgress: (old.spellingregelsProgress as ExerciseProgress) || emptyProgress(),
             woorddelenProgress: (old.woorddelenProgress as ExerciseProgress) || emptyProgress(),
           };
+        }
+
+        if (version < 4) {
+          // v3 -> v4: add recentByLevel to all ExerciseProgress fields
+          const progressFields: ProgressKey[] = [
+            'lettersProgress', 'lettergrepenProgress', 'woordenProgress',
+            'zinnenProgress', 'flitslezenProgress', 'spellingregelsProgress', 'woorddelenProgress',
+          ];
+          for (const key of progressFields) {
+            const p = old[key] as ExerciseProgress | undefined;
+            if (p && !p.recentByLevel) {
+              (old[key] as ExerciseProgress).recentByLevel = {};
+            }
+          }
+          const saved = (old._savedProfiles as Record<string, ProfileData>) || {};
+          for (const pd of Object.values(saved)) {
+            for (const key of progressFields) {
+              const p = pd[key] as ExerciseProgress | undefined;
+              if (p && !p.recentByLevel) {
+                p.recentByLevel = {};
+              }
+            }
+          }
+          return old;
         }
 
         return persisted;

@@ -9,11 +9,14 @@ import StarReward from '@/components/StarReward';
 import BadgeNotification from '@/components/BadgeNotification';
 import { getSpellingExercise, categoryLabels, type SpellingQuestion } from '@/data/spellingregels';
 import { useGameStore } from '@/store/useGameStore';
+import { getAvailableAILevel, maxStaticLevel, checkAIAvailable } from '@/lib/adaptive';
+import { fetchAIExercises } from '@/lib/aiExercises';
+
 const QUESTIONS_PER_ROUND = 8;
 type GamePhase = 'intro' | 'playing' | 'result';
 
 export default function SpellingregelsPage() {
-  const { level, updateSpellingregelsProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
+  const { level, spellingregelsProgress, updateSpellingregelsProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
   const [selectedLevel, setSelectedLevel] = useState(Math.min(level, 3));
@@ -25,12 +28,56 @@ export default function SpellingregelsPage() {
   const [roundScore, setRoundScore] = useState(0);
   const [showExplanation, setShowExplanation] = useState(false);
 
-  const startGame = useCallback(() => {
-    setQuestions(getSpellingExercise(selectedLevel, QUESTIONS_PER_ROUND));
-    setCurrentQuestion(0);
-    setRoundScore(0);
-    setGamePhase('playing');
-  }, [selectedLevel]);
+  const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiLevel, setAiLevel] = useState<number | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const isAIMode = selectedLevel > maxStaticLevel.spellingregels;
+
+  useEffect(() => {
+    checkAIAvailable().then(setAiAvailable);
+  }, []);
+
+  useEffect(() => {
+    if (aiAvailable) {
+      setAiLevel(getAvailableAILevel(spellingregelsProgress, 'spellingregels'));
+    } else {
+      setAiLevel(null);
+    }
+  }, [aiAvailable, spellingregelsProgress]);
+
+  const startGame = useCallback(async () => {
+    if (isAIMode) {
+      setAiLoading(true);
+      try {
+        const fetched = await fetchAIExercises('spellingregels', selectedLevel, QUESTIONS_PER_ROUND);
+        const typed = fetched as SpellingQuestion[];
+        if (typed.length >= QUESTIONS_PER_ROUND) {
+          setQuestions(typed.slice(0, QUESTIONS_PER_ROUND));
+          setCurrentQuestion(0);
+          setRoundScore(0);
+          setGamePhase('playing');
+        } else {
+          setQuestions(getSpellingExercise(maxStaticLevel.spellingregels, QUESTIONS_PER_ROUND));
+          setCurrentQuestion(0);
+          setRoundScore(0);
+          setGamePhase('playing');
+        }
+      } catch {
+        setQuestions(getSpellingExercise(maxStaticLevel.spellingregels, QUESTIONS_PER_ROUND));
+        setCurrentQuestion(0);
+        setRoundScore(0);
+        setGamePhase('playing');
+      } finally {
+        setAiLoading(false);
+      }
+    } else {
+      setQuestions(getSpellingExercise(selectedLevel, QUESTIONS_PER_ROUND));
+      setCurrentQuestion(0);
+      setRoundScore(0);
+      setGamePhase('playing');
+    }
+  }, [selectedLevel, isAIMode]);
 
   const currentQ = questions[currentQuestion];
 
@@ -44,12 +91,12 @@ export default function SpellingregelsPage() {
     if (correct) {
       setRoundScore((s) => s + 1);
       setShowStar(true);
-      updateSpellingregelsProgress(true);
+      updateSpellingregelsProgress(true, selectedLevel);
       addStars(2);
-      addXP(15);
+      addXP(isAIMode ? 25 : 15);
       incrementStreak();
     } else {
-      updateSpellingregelsProgress(false);
+      updateSpellingregelsProgress(false, selectedLevel);
       resetStreak();
     }
 
@@ -67,7 +114,7 @@ export default function SpellingregelsPage() {
         setIsCorrect(null);
       }
     }, 3000);
-  }, [selectedAnswer, currentQ, currentQuestion, roundScore, updateSpellingregelsProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges]);
+  }, [selectedAnswer, currentQ, currentQuestion, roundScore, selectedLevel, isAIMode, updateSpellingregelsProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges]);
 
   // Intro
   if (gamePhase === 'intro') {
@@ -96,12 +143,27 @@ export default function SpellingregelsPage() {
                 </div>
               </motion.button>
             ))}
+            {aiAvailable && aiLevel && (
+              <motion.button onClick={() => setSelectedLevel(aiLevel)}
+                className={`p-4 rounded-2xl font-bold text-lg transition-all ${selectedLevel === aiLevel ? 'bg-gradient-to-r from-accent-purple to-primary text-white shadow-lg scale-105' : 'bg-card-bg text-foreground shadow-md border-2 border-dashed border-accent-purple/30'}`}
+                whileTap={{ scale: 0.98 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🤖</span>
+                  <div className="text-left">
+                    <div>Niveau {aiLevel} <span className="text-xs font-normal opacity-70">(AI)</span></div>
+                    <div className={`text-sm font-normal ${selectedLevel === aiLevel ? 'text-white/70' : 'text-gray-400'}`}>Extra uitdaging, door AI gegenereerd</div>
+                  </div>
+                </div>
+              </motion.button>
+            )}
           </div>
 
-          <motion.button onClick={startGame}
-            className="bg-gradient-to-r from-[#a06cd5] to-[#c084fc] text-white text-xl font-bold py-4 px-8 rounded-2xl shadow-lg"
-            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            Start!
+          <motion.button
+            onClick={startGame}
+            disabled={aiLoading}
+            className="bg-gradient-to-r from-[#a06cd5] to-[#c084fc] text-white text-xl font-bold py-4 px-8 rounded-2xl shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+            whileHover={!aiLoading ? { scale: 1.05 } : {}} whileTap={!aiLoading ? { scale: 0.95 } : {}}>
+            {aiLoading ? 'Laden...' : 'Start!'}
           </motion.button>
         </motion.div>
       </div>
@@ -118,6 +180,9 @@ export default function SpellingregelsPage() {
         <motion.div className="bg-card-bg rounded-3xl shadow-2xl p-8 max-w-md w-full text-center" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring' }}>
           <div className="text-7xl mb-4">{pct >= 70 ? '🏆' : '💪'}</div>
           <h2 className="text-3xl font-bold mb-2">Klaar!</h2>
+          {isAIMode && (
+            <div className="inline-block bg-accent-purple/15 text-accent-purple px-3 py-1 rounded-full text-sm font-bold mb-2">🤖 AI-niveau</div>
+          )}
           <p className="text-lg text-gray-500 mb-6">{msg}</p>
           <div className="bg-background rounded-2xl p-4 mb-6">
             <div className="text-5xl font-bold text-accent-purple mb-1">{roundScore}/{QUESTIONS_PER_ROUND}</div>

@@ -9,6 +9,9 @@ import StarReward from '@/components/StarReward';
 import BadgeNotification from '@/components/BadgeNotification';
 import { getFlashExercise, getFlashWordsByLevel, flashDurations, type FlashWord } from '@/data/flitslezen';
 import { useGameStore } from '@/store/useGameStore';
+import { getAvailableAILevel, maxStaticLevel, checkAIAvailable } from '@/lib/adaptive';
+import { fetchAIExercises } from '@/lib/aiExercises';
+
 const QUESTIONS_PER_ROUND = 10;
 type GamePhase = 'intro' | 'flash' | 'answer' | 'result';
 type Speed = 'easy' | 'medium' | 'hard';
@@ -16,7 +19,7 @@ type Speed = 'easy' | 'medium' | 'hard';
 const speedLabels: Record<Speed, string> = { easy: 'Rustig (2s)', medium: 'Normaal (1.2s)', hard: 'Snel (0.6s)' };
 
 export default function FlitslezenPage() {
-  const { level, updateFlitslezenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
+  const { level, flitslezenProgress, updateFlitslezenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
   const [selectedLevel, setSelectedLevel] = useState(Math.min(level, 3));
@@ -28,14 +31,37 @@ export default function FlitslezenPage() {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [showStar, setShowStar] = useState(false);
   const [roundScore, setRoundScore] = useState(0);
+  const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiLevel, setAiLevel] = useState<number | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const isAIMode = selectedLevel > maxStaticLevel.flitslezen;
 
-  const startGame = useCallback(() => {
-    const qs = getFlashExercise(selectedLevel, QUESTIONS_PER_ROUND);
-    setQuestions(qs);
+  useEffect(() => { checkAIAvailable().then(setAiAvailable); }, []);
+  useEffect(() => {
+    if (aiAvailable) {
+      const lvl = getAvailableAILevel(flitslezenProgress, 'flitslezen');
+      setAiLevel(lvl);
+    }
+  }, [aiAvailable, flitslezenProgress]);
+
+  const startGame = useCallback(async () => {
+    if (isAIMode) {
+      setAiLoading(true);
+      try {
+        const aiData = await fetchAIExercises('flitslezen', selectedLevel, QUESTIONS_PER_ROUND);
+        setQuestions(aiData as FlashWord[]);
+      } catch {
+        setQuestions(getFlashExercise(maxStaticLevel.flitslezen, QUESTIONS_PER_ROUND));
+      } finally {
+        setAiLoading(false);
+      }
+    } else {
+      setQuestions(getFlashExercise(selectedLevel, QUESTIONS_PER_ROUND));
+    }
     setCurrentQuestion(0);
     setRoundScore(0);
     setGamePhase('flash');
-  }, [selectedLevel]);
+  }, [selectedLevel, isAIMode]);
 
   const currentQ = questions[currentQuestion];
 
@@ -72,12 +98,12 @@ export default function FlitslezenPage() {
     if (correct) {
       setRoundScore((s) => s + 1);
       setShowStar(true);
-      updateFlitslezenProgress(true);
+      updateFlitslezenProgress(true, selectedLevel);
       addStars(2);
-      addXP(15);
+      addXP(isAIMode ? 25 : 15);
       incrementStreak();
     } else {
-      updateFlitslezenProgress(false);
+      updateFlitslezenProgress(false, selectedLevel);
       resetStreak();
     }
 
@@ -93,7 +119,7 @@ export default function FlitslezenPage() {
         setGamePhase('flash');
       }
     }, 1500);
-  }, [selectedAnswer, currentQ, currentQuestion, roundScore, updateFlitslezenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges]);
+  }, [selectedAnswer, currentQ, currentQuestion, roundScore, selectedLevel, isAIMode, updateFlitslezenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges]);
 
   // ── Intro ──
   if (gamePhase === 'intro') {
@@ -136,12 +162,25 @@ export default function FlitslezenPage() {
                 </div>
               </motion.button>
             ))}
+            {aiAvailable && aiLevel && (
+              <motion.button onClick={() => setSelectedLevel(aiLevel)}
+                className={`p-4 rounded-2xl font-bold text-lg transition-all ${selectedLevel === aiLevel ? 'bg-gradient-to-r from-accent-purple to-primary text-white shadow-lg scale-105' : 'bg-card-bg text-foreground shadow-md border-2 border-dashed border-accent-purple/30'}`}
+                whileTap={{ scale: 0.98 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🤖</span>
+                  <div className="text-left">
+                    <div>Niveau {aiLevel} <span className="text-xs font-normal opacity-70">(AI)</span></div>
+                    <div className={`text-sm font-normal ${selectedLevel === aiLevel ? 'text-white/70' : 'text-gray-400'}`}>Extra uitdaging, door AI gegenereerd</div>
+                  </div>
+                </div>
+              </motion.button>
+            )}
           </div>
 
-          <motion.button onClick={startGame}
-            className="bg-gradient-to-r from-[#7c6aff] to-[#38bdf8] text-white text-xl font-bold py-4 px-8 rounded-2xl shadow-lg"
-            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            Start!
+          <motion.button onClick={startGame} disabled={aiLoading}
+            className="bg-gradient-to-r from-[#7c6aff] to-[#38bdf8] text-white text-xl font-bold py-4 px-8 rounded-2xl shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+            whileHover={{ scale: aiLoading ? 1 : 1.05 }} whileTap={{ scale: aiLoading ? 1 : 0.95 }}>
+            {aiLoading ? 'Laden...' : 'Start!'}
           </motion.button>
         </motion.div>
       </div>
@@ -156,6 +195,7 @@ export default function FlitslezenPage() {
       <div className="min-h-screen p-4 sm:p-6 max-w-2xl mx-auto flex items-center justify-center">
         <BadgeNotification />
         <motion.div className="bg-card-bg rounded-3xl shadow-2xl p-8 max-w-md w-full text-center" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring' }}>
+          {isAIMode && <p className="text-accent-purple text-sm font-bold mb-1">🤖 AI Niveau {selectedLevel}</p>}
           <div className="text-7xl mb-4">{pct >= 80 ? '⚡' : '💪'}</div>
           <h2 className="text-3xl font-bold mb-2">Klaar!</h2>
           <p className="text-lg text-gray-500 mb-6">{msg}</p>

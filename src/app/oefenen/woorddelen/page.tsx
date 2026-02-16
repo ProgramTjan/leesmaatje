@@ -10,6 +10,8 @@ import BadgeNotification from '@/components/BadgeNotification';
 import { getWordPartsExercise, typeLabels, type WordPartData } from '@/data/woorddelen';
 import { useGameStore } from '@/store/useGameStore';
 import { speakWord, stopSpeaking } from '@/lib/speech';
+import { getAvailableAILevel, maxStaticLevel, checkAIAvailable } from '@/lib/adaptive';
+import { fetchAIExercises } from '@/lib/aiExercises';
 
 const QUESTIONS_PER_ROUND = 8;
 type GamePhase = 'intro' | 'playing' | 'result';
@@ -17,7 +19,7 @@ type GamePhase = 'intro' | 'playing' | 'result';
 const partColors = ['#7c6aff', '#ff5c8a', '#34d399', '#fbbf24', '#38bdf8', '#c084fc'];
 
 export default function WoorddelenPage() {
-  const { level, soundEnabled, updateWoorddelenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
+  const { level, soundEnabled, woorddelenProgress, updateWoorddelenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
   const [selectedLevel, setSelectedLevel] = useState(Math.min(level, 3));
@@ -29,12 +31,56 @@ export default function WoorddelenPage() {
   const [showStar, setShowStar] = useState(false);
   const [roundScore, setRoundScore] = useState(0);
 
-  const startGame = useCallback(() => {
-    setQuestions(getWordPartsExercise(selectedLevel, QUESTIONS_PER_ROUND));
-    setCurrentQuestion(0);
-    setRoundScore(0);
-    setGamePhase('playing');
-  }, [selectedLevel]);
+  const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiLevel, setAiLevel] = useState<number | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const isAIMode = selectedLevel > maxStaticLevel.woorddelen;
+
+  useEffect(() => {
+    checkAIAvailable().then(setAiAvailable);
+  }, []);
+
+  useEffect(() => {
+    if (aiAvailable) {
+      setAiLevel(getAvailableAILevel(woorddelenProgress, 'woorddelen'));
+    } else {
+      setAiLevel(null);
+    }
+  }, [aiAvailable, woorddelenProgress]);
+
+  const startGame = useCallback(async () => {
+    if (isAIMode) {
+      setAiLoading(true);
+      try {
+        const fetched = await fetchAIExercises('woorddelen', selectedLevel, QUESTIONS_PER_ROUND);
+        const typed = fetched as WordPartData[];
+        if (typed.length >= QUESTIONS_PER_ROUND) {
+          setQuestions(typed.slice(0, QUESTIONS_PER_ROUND));
+          setCurrentQuestion(0);
+          setRoundScore(0);
+          setGamePhase('playing');
+        } else {
+          setQuestions(getWordPartsExercise(maxStaticLevel.woorddelen, QUESTIONS_PER_ROUND));
+          setCurrentQuestion(0);
+          setRoundScore(0);
+          setGamePhase('playing');
+        }
+      } catch {
+        setQuestions(getWordPartsExercise(maxStaticLevel.woorddelen, QUESTIONS_PER_ROUND));
+        setCurrentQuestion(0);
+        setRoundScore(0);
+        setGamePhase('playing');
+      } finally {
+        setAiLoading(false);
+      }
+    } else {
+      setQuestions(getWordPartsExercise(selectedLevel, QUESTIONS_PER_ROUND));
+      setCurrentQuestion(0);
+      setRoundScore(0);
+      setGamePhase('playing');
+    }
+  }, [selectedLevel, isAIMode]);
 
   const currentQ = questions[currentQuestion];
 
@@ -87,12 +133,12 @@ export default function WoorddelenPage() {
     if (correct) {
       setRoundScore((s) => s + 1);
       setShowStar(true);
-      updateWoorddelenProgress(true);
+      updateWoorddelenProgress(true, selectedLevel);
       addStars(2);
-      addXP(15);
+      addXP(isAIMode ? 25 : 15);
       incrementStreak();
     } else {
-      updateWoorddelenProgress(false);
+      updateWoorddelenProgress(false, selectedLevel);
       resetStreak();
     }
 
@@ -107,7 +153,7 @@ export default function WoorddelenPage() {
         setCurrentQuestion((q) => q + 1);
       }
     }, 2000);
-  }, [selectedSplitIndex, splitOptions, currentQ, currentQuestion, roundScore, updateWoorddelenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges]);
+  }, [selectedSplitIndex, splitOptions, currentQ, currentQuestion, roundScore, selectedLevel, isAIMode, updateWoorddelenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges]);
 
   // Intro
   if (gamePhase === 'intro') {
@@ -146,12 +192,27 @@ export default function WoorddelenPage() {
                 </div>
               </motion.button>
             ))}
+            {aiAvailable && aiLevel && (
+              <motion.button onClick={() => setSelectedLevel(aiLevel)}
+                className={`p-4 rounded-2xl font-bold text-lg transition-all ${selectedLevel === aiLevel ? 'bg-gradient-to-r from-accent-green to-primary text-white shadow-lg scale-105' : 'bg-card-bg text-foreground shadow-md border-2 border-dashed border-accent-green/30'}`}
+                whileTap={{ scale: 0.98 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🤖</span>
+                  <div className="text-left">
+                    <div>Niveau {aiLevel} <span className="text-xs font-normal opacity-70">(AI)</span></div>
+                    <div className={`text-sm font-normal ${selectedLevel === aiLevel ? 'text-white/70' : 'text-gray-400'}`}>Extra uitdaging, door AI gegenereerd</div>
+                  </div>
+                </div>
+              </motion.button>
+            )}
           </div>
 
-          <motion.button onClick={startGame}
-            className="bg-gradient-to-r from-[#34d399] to-[#38bdf8] text-white text-xl font-bold py-4 px-8 rounded-2xl shadow-lg"
-            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            Start!
+          <motion.button
+            onClick={startGame}
+            disabled={aiLoading}
+            className="bg-gradient-to-r from-[#34d399] to-[#38bdf8] text-white text-xl font-bold py-4 px-8 rounded-2xl shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+            whileHover={!aiLoading ? { scale: 1.05 } : {}} whileTap={!aiLoading ? { scale: 0.95 } : {}}>
+            {aiLoading ? 'Laden...' : 'Start!'}
           </motion.button>
         </motion.div>
       </div>
@@ -168,6 +229,9 @@ export default function WoorddelenPage() {
         <motion.div className="bg-card-bg rounded-3xl shadow-2xl p-8 max-w-md w-full text-center" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring' }}>
           <div className="text-7xl mb-4">{pct >= 70 ? '🧠' : '💪'}</div>
           <h2 className="text-3xl font-bold mb-2">Klaar!</h2>
+          {isAIMode && (
+            <div className="inline-block bg-accent-green/15 text-accent-green px-3 py-1 rounded-full text-sm font-bold mb-2">🤖 AI-niveau</div>
+          )}
           <p className="text-lg text-gray-500 mb-6">{msg}</p>
           <div className="bg-background rounded-2xl p-4 mb-6">
             <div className="text-5xl font-bold text-accent-green mb-1">{roundScore}/{QUESTIONS_PER_ROUND}</div>
