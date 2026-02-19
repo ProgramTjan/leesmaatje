@@ -11,12 +11,13 @@ import { getSpellingExercise, categoryLabels, type SpellingQuestion } from '@/da
 import { useGameStore } from '@/store/useGameStore';
 import { getAvailableAILevel, maxStaticLevel, checkAIAvailable } from '@/lib/adaptive';
 import { fetchAIExercises } from '@/lib/aiExercises';
+import { speakEncouragement } from '@/lib/speech';
 
 const QUESTIONS_PER_ROUND = 8;
 type GamePhase = 'intro' | 'playing' | 'result';
 
 export default function SpellingregelsPage() {
-  const { level, spellingregelsProgress, updateSpellingregelsProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
+  const { level, soundEnabled, currentStreak, spellingregelsProgress, updateSpellingregelsProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
   const [selectedLevel, setSelectedLevel] = useState(Math.min(level, 3));
@@ -95,6 +96,9 @@ export default function SpellingregelsPage() {
       addStars(2);
       addXP(isAIMode ? 25 : 15);
       incrementStreak();
+      if (soundEnabled && (currentStreak + 1) % 5 === 0) {
+        speakEncouragement();
+      }
     } else {
       updateSpellingregelsProgress(false, selectedLevel);
       resetStreak();

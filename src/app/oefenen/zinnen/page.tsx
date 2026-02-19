@@ -9,7 +9,7 @@ import StarReward from '@/components/StarReward';
 import BadgeNotification from '@/components/BadgeNotification';
 import { getExerciseSentences, shuffleSentence, type SentenceData } from '@/data/zinnen';
 import { useGameStore } from '@/store/useGameStore';
-import { speak, stopSpeaking } from '@/lib/speech';
+import { speak, speakEncouragement, stopSpeaking } from '@/lib/speech';
 import { getAvailableAILevel, maxStaticLevel, checkAIAvailable } from '@/lib/adaptive';
 import { fetchAIExercises } from '@/lib/aiExercises';
 
@@ -34,6 +34,7 @@ export default function ZinnenPage() {
   const {
     level,
     soundEnabled,
+    currentStreak,
     zinnenProgress,
     updateZinnenProgress,
     addStars,
@@ -140,6 +141,9 @@ export default function ZinnenPage() {
       addStars(3);
       addXP(isAIMode ? 30 : 20);
       incrementStreak();
+      if (soundEnabled && (currentStreak + 1) % 5 === 0) {
+        speakEncouragement();
+      }
     } else {
       updateZinnenProgress(false, selectedLevel);
       resetStreak();

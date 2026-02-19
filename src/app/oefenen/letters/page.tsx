@@ -9,7 +9,7 @@ import StarReward from '@/components/StarReward';
 import BadgeNotification from '@/components/BadgeNotification';
 import { letters, getLettersByLevel, getDistractors, type LetterData } from '@/data/letters';
 import { useGameStore } from '@/store/useGameStore';
-import { speakLetter, speakWord, stopSpeaking } from '@/lib/speech';
+import { speakLetter, speakWord, speakEncouragement, stopSpeaking } from '@/lib/speech';
 
 const QUESTIONS_PER_ROUND = 10;
 
@@ -50,7 +50,7 @@ function generateQuestions(level: number, count: number): Question[] {
 }
 
 export default function LettersPage() {
-  const { level, soundEnabled, updateLettersProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
+  const { level, soundEnabled, currentStreak, updateLettersProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
   const [selectedLevel, setSelectedLevel] = useState(Math.min(level, 3));
@@ -105,6 +105,9 @@ export default function LettersPage() {
       addStars(1);
       addXP(10);
       incrementStreak();
+      if (soundEnabled && (currentStreak + 1) % 5 === 0) {
+        speakEncouragement();
+      }
 
     } else {
       updateLettersProgress(false);

@@ -9,7 +9,7 @@ import StarReward from '@/components/StarReward';
 import BadgeNotification from '@/components/BadgeNotification';
 import { getWordPartsExercise, typeLabels, type WordPartData } from '@/data/woorddelen';
 import { useGameStore } from '@/store/useGameStore';
-import { speakWord, stopSpeaking } from '@/lib/speech';
+import { speakWord, speakEncouragement, stopSpeaking } from '@/lib/speech';
 import { getAvailableAILevel, maxStaticLevel, checkAIAvailable } from '@/lib/adaptive';
 import { fetchAIExercises } from '@/lib/aiExercises';
 
@@ -19,7 +19,7 @@ type GamePhase = 'intro' | 'playing' | 'result';
 const partColors = ['#7c6aff', '#ff5c8a', '#34d399', '#fbbf24', '#38bdf8', '#c084fc'];
 
 export default function WoorddelenPage() {
-  const { level, soundEnabled, woorddelenProgress, updateWoorddelenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
+  const { level, soundEnabled, currentStreak, woorddelenProgress, updateWoorddelenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
   const [selectedLevel, setSelectedLevel] = useState(Math.min(level, 3));
@@ -137,6 +137,9 @@ export default function WoorddelenPage() {
       addStars(2);
       addXP(isAIMode ? 25 : 15);
       incrementStreak();
+      if (soundEnabled && (currentStreak + 1) % 5 === 0) {
+        speakEncouragement();
+      }
     } else {
       updateWoorddelenProgress(false, selectedLevel);
       resetStreak();

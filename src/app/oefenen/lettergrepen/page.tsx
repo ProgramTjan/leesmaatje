@@ -9,7 +9,7 @@ import StarReward from '@/components/StarReward';
 import BadgeNotification from '@/components/BadgeNotification';
 import { getExerciseWords, syllableColors, type WordData } from '@/data/lettergrepen';
 import { useGameStore } from '@/store/useGameStore';
-import { speakWord, speakSyllable, stopSpeaking } from '@/lib/speech';
+import { speakWord, speakSyllable, speakEncouragement, stopSpeaking } from '@/lib/speech';
 
 const QUESTIONS_PER_ROUND = 10;
 
@@ -47,7 +47,7 @@ function generateQuestions(level: number, count: number): Question[] {
 }
 
 export default function LettergrepenPage() {
-  const { level, soundEnabled, updateLettergrepenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
+  const { level, soundEnabled, currentStreak, updateLettergrepenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
   const [selectedLevel, setSelectedLevel] = useState(Math.min(level, 3));
@@ -109,6 +109,9 @@ export default function LettergrepenPage() {
       addStars(1);
       addXP(10);
       incrementStreak();
+      if (soundEnabled && (currentStreak + 1) % 5 === 0) {
+        speakEncouragement();
+      }
 
     } else {
       updateLettergrepenProgress(false);

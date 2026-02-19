@@ -11,6 +11,7 @@ import { getFlashExercise, getFlashWordsByLevel, flashDurations, type FlashWord 
 import { useGameStore } from '@/store/useGameStore';
 import { getAvailableAILevel, maxStaticLevel, checkAIAvailable } from '@/lib/adaptive';
 import { fetchAIExercises } from '@/lib/aiExercises';
+import { speakEncouragement } from '@/lib/speech';
 
 const QUESTIONS_PER_ROUND = 10;
 type GamePhase = 'intro' | 'flash' | 'answer' | 'result';
@@ -19,7 +20,7 @@ type Speed = 'easy' | 'medium' | 'hard';
 const speedLabels: Record<Speed, string> = { easy: 'Rustig (2s)', medium: 'Normaal (1.2s)', hard: 'Snel (0.6s)' };
 
 export default function FlitslezenPage() {
-  const { level, flitslezenProgress, updateFlitslezenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
+  const { level, soundEnabled, currentStreak, flitslezenProgress, updateFlitslezenProgress, addStars, addXP, incrementStreak, resetStreak, addPerfectRound, checkAndUnlockBadges } = useGameStore();
 
   const [gamePhase, setGamePhase] = useState<GamePhase>('intro');
   const [selectedLevel, setSelectedLevel] = useState(Math.min(level, 3));
@@ -102,6 +103,9 @@ export default function FlitslezenPage() {
       addStars(2);
       addXP(isAIMode ? 25 : 15);
       incrementStreak();
+      if (soundEnabled && (currentStreak + 1) % 5 === 0) {
+        speakEncouragement();
+      }
     } else {
       updateFlitslezenProgress(false, selectedLevel);
       resetStreak();

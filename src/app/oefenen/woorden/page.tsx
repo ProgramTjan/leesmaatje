@@ -9,7 +9,7 @@ import StarReward from '@/components/StarReward';
 import BadgeNotification from '@/components/BadgeNotification';
 import { getBuildExerciseWords, shuffleWord, type BuildWordData } from '@/data/woorden';
 import { useGameStore } from '@/store/useGameStore';
-import { speakWord, stopSpeaking } from '@/lib/speech';
+import { speakWord, speakEncouragement, stopSpeaking } from '@/lib/speech';
 import { getAvailableAILevel, maxStaticLevel, checkAIAvailable } from '@/lib/adaptive';
 import { fetchAIExercises } from '@/lib/aiExercises';
 
@@ -46,6 +46,7 @@ export default function WoordenPage() {
   const {
     level,
     soundEnabled,
+    currentStreak,
     woordenProgress,
     updateWoordenProgress,
     addStars,
@@ -153,6 +154,9 @@ export default function WoordenPage() {
       addStars(2);
       addXP(isAIMode ? 25 : 15);
       incrementStreak();
+      if (soundEnabled && (currentStreak + 1) % 5 === 0) {
+        speakEncouragement();
+      }
     } else {
       updateWoordenProgress(false, selectedLevel);
       resetStreak();
