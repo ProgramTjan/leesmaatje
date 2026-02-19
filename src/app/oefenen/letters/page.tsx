@@ -263,6 +263,13 @@ export default function LettersPage() {
             >
               Kies ander niveau
             </motion.button>
+            <motion.a
+              href="/"
+              className="block text-center text-gray-400 text-base font-semibold py-2 rounded-2xl hover:text-foreground transition-colors"
+              whileTap={{ scale: 0.98 }}
+            >
+              Terug naar menu
+            </motion.a>
           </div>
         </motion.div>
       </div>

@@ -210,6 +210,7 @@ export default function FlitslezenPage() {
           <div className="flex flex-col gap-3">
             <motion.button onClick={startGame} className="bg-gradient-to-r from-[#7c6aff] to-[#38bdf8] text-white text-lg font-bold py-3 rounded-2xl shadow-lg" whileTap={{ scale: 0.98 }}>Nog een keer!</motion.button>
             <motion.button onClick={() => setGamePhase('intro')} className="bg-gray-100 text-foreground text-lg font-bold py-3 rounded-2xl" whileTap={{ scale: 0.98 }}>Instellingen</motion.button>
+            <motion.a href="/" className="block text-center text-gray-400 text-base font-semibold py-2 rounded-2xl hover:text-foreground transition-colors" whileTap={{ scale: 0.98 }}>Terug naar menu</motion.a>
           </div>
         </motion.div>
       </div>

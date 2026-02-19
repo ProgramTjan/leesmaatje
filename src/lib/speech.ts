@@ -2,14 +2,14 @@
  * Text-to-Speech utility using the Web Speech API
  * Configured for Dutch (nl-NL) pronunciation
  *
- * Improvements:
  * - Async voice loading via onvoiceschanged
  * - Prefers high-quality / online Dutch voices
- * - Caches the selected voice for performance
+ * - Retries voice selection if no Dutch voice was found initially
+ * - Chrome workaround for stuck speechSynthesis
  */
 
 let cachedVoice: SpeechSynthesisVoice | null = null;
-let voicesLoaded = false;
+let voiceLoadPromise: Promise<void> | null = null;
 
 /**
  * Quality ranking for Dutch voices.
@@ -53,28 +53,25 @@ function selectBestDutchVoice(): SpeechSynthesisVoice | null {
   return dutchVoices[0];
 }
 
-function ensureVoicesLoaded(): Promise<void> {
-  return new Promise((resolve) => {
+function loadVoices(): Promise<void> {
+  if (voiceLoadPromise) return voiceLoadPromise;
+
+  voiceLoadPromise = new Promise((resolve) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       resolve();
       return;
     }
 
-    // Voices already loaded
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length > 0) {
-      if (!voicesLoaded) {
-        cachedVoice = selectBestDutchVoice();
-        voicesLoaded = true;
-      }
+    // Try immediately — some browsers have voices ready synchronously
+    cachedVoice = selectBestDutchVoice();
+    if (cachedVoice) {
       resolve();
       return;
     }
 
-    // Wait for voices to become available
+    // Wait for voices to become available (Chrome loads them async)
     const handler = () => {
       cachedVoice = selectBestDutchVoice();
-      voicesLoaded = true;
       window.speechSynthesis.removeEventListener('voiceschanged', handler);
       resolve();
     };
@@ -82,26 +79,35 @@ function ensureVoicesLoaded(): Promise<void> {
 
     // Timeout fallback — some browsers never fire voiceschanged
     setTimeout(() => {
-      if (!voicesLoaded) {
-        cachedVoice = selectBestDutchVoice();
-        voicesLoaded = true;
-        window.speechSynthesis.removeEventListener('voiceschanged', handler);
-      }
+      cachedVoice = selectBestDutchVoice();
+      window.speechSynthesis.removeEventListener('voiceschanged', handler);
       resolve();
-    }, 1000);
+    }, 2000);
   });
+
+  return voiceLoadPromise;
 }
 
-// Kick off voice loading immediately on import
-if (typeof window !== 'undefined') {
-  ensureVoicesLoaded();
+// Keep listening for new voices even after initial load.
+// Some browsers add higher quality voices after the first batch.
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+  window.speechSynthesis.addEventListener('voiceschanged', () => {
+    const better = selectBestDutchVoice();
+    if (better) cachedVoice = better;
+  });
+  loadVoices();
 }
 
 export async function speak(text: string, rate: number = 0.85): Promise<void> {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
-  // Make sure we have the best voice selected
-  await ensureVoicesLoaded();
+  // Wait for initial voice loading
+  await loadVoices();
+
+  // If we still don't have a Dutch voice, try once more (voices may have loaded late)
+  if (!cachedVoice) {
+    cachedVoice = selectBestDutchVoice();
+  }
 
   // Cancel any ongoing speech
   window.speechSynthesis.cancel();
@@ -110,21 +116,18 @@ export async function speak(text: string, rate: number = 0.85): Promise<void> {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'nl-NL';
     utterance.rate = rate;
-    utterance.pitch = 1.1; // Slightly higher pitch, friendlier for kids
+    utterance.pitch = 1.1;
     utterance.volume = 1;
 
+    // Explicitly set the Dutch voice — without this, browsers fall back to
+    // the system default which is usually English.
     if (cachedVoice) {
       utterance.voice = cachedVoice;
     }
 
-    utterance.onend = () => resolve();
-    utterance.onerror = () => resolve(); // Don't break the app on speech errors
-
-    // Chrome bug workaround: speechSynthesis can get stuck.
-    // Pausing and resuming prevents silent failures.
     window.speechSynthesis.speak(utterance);
 
-    // Chrome pause/resume workaround for long utterances
+    // Chrome workaround: pause/resume prevents speechSynthesis from going silent
     const watchdog = setInterval(() => {
       if (!window.speechSynthesis.speaking) {
         clearInterval(watchdog);
