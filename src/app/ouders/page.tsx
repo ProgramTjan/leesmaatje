@@ -72,14 +72,46 @@ function ProfileCard({ profile, data, onClick }: { profile: Profile; data: Profi
   );
 }
 
+function accuracyColor(acc: number, total: number): string {
+  if (total < 5) return '#94a3b8'; // te weinig data: grijs
+  if (acc >= 80) return '#34d399';  // goed: groen
+  if (acc >= 60) return '#f59e0b';  // matig: oranje
+  return '#f87171';                  // zwak: rood
+}
+
+function accuracyLabel(acc: number, total: number): string {
+  if (total < 5) return 'Nog weinig geoefend';
+  if (acc >= 80) return 'Goed bezig! 🌟';
+  if (acc >= 60) return 'Oefening baart kunst';
+  return 'Extra aandacht nodig';
+}
+
+const tipPerExercise: Record<ProgressKey, string> = {
+  lettersProgress: 'Oefen letters hardop samen: zeg de klank, schrijf de letter.',
+  lettergrepenProgress: 'Klap lettergrepen mee bij alledaagse woorden, bijv. tijdens het eten.',
+  woordenProgress: 'Lees samen korte boekjes en wijs moeilijke woorden aan.',
+  zinnenProgress: 'Vertel om beurten een verhaaltje en let op de woordvolgorde.',
+  flitslezenProgress: 'Schrijf woorden op kaartjes en oefen het snel herkennen.',
+  spellingregelsProgress: 'Zoek samen dt-fouten in krantenkoppen of app-berichten.',
+  woorddelenProgress: 'Zoek samen lange woorden en splits ze in stukjes.',
+};
+
 function ProfileDetail({ profile, data, onBack }: { profile: Profile; data: ProfileData; onBack: () => void }) {
   const totalExercises = progressKeys.reduce((sum, key) => sum + data[key].total, 0);
   const totalCorrect = progressKeys.reduce((sum, key) => sum + data[key].correct, 0);
   const accuracy = totalExercises > 0 ? Math.round((totalCorrect / totalExercises) * 100) : 0;
 
-  const maxExercises = Math.max(...progressKeys.map((key) => data[key].total), 1);
-
   const unlockedBadgeObjects = badges.filter((b) => data.unlockedBadges.includes(b.id));
+
+  // Zwakste oefening met genoeg data (min 5 pogingen, laagste nauwkeurigheid)
+  const weakest = progressKeys
+    .map((key) => {
+      const p = data[key];
+      const acc = p.total >= 5 ? Math.round((p.correct / p.total) * 100) : 999;
+      return { key, acc, total: p.total };
+    })
+    .filter((x) => x.acc < 80 && x.total >= 5)
+    .sort((a, b) => a.acc - b.acc)[0] ?? null;
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
@@ -130,38 +162,56 @@ function ProfileDetail({ profile, data, onBack }: { profile: Profile; data: Prof
         </div>
       </div>
 
-      {/* Bar chart per exercise */}
+      {/* Accuracy chart per exercise */}
       <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
-        <h3 className="font-bold text-gray-700 mb-4">Voortgang per oefening</h3>
+        <h3 className="font-bold text-gray-700 mb-1">Nauwkeurigheid per oefening</h3>
+        <p className="text-xs text-gray-400 mb-4">Percentage goed beantwoord &middot; groen ≥ 80% &middot; oranje 60-79% &middot; rood &lt; 60%</p>
         <div className="space-y-3">
           {progressKeys.map((key) => {
             const progress = data[key];
-            const { label, color } = exerciseLabels[key];
-            const pct = maxExercises > 0 ? (progress.total / maxExercises) * 100 : 0;
+            const { label } = exerciseLabels[key];
             const acc = progress.total > 0 ? Math.round((progress.correct / progress.total) * 100) : 0;
+            const barColor = accuracyColor(acc, progress.total);
+            const sublabel = accuracyLabel(acc, progress.total);
 
             return (
               <div key={key}>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600 font-medium">{label}</span>
-                  <span className="text-gray-400 text-xs">
-                    {progress.total}x &middot; {acc}% goed
-                    {progress.lastPlayed && (
-                      <> &middot; {new Date(progress.lastPlayed).toLocaleDateString('nl-NL')}</>
-                    )}
+                  <span className="text-xs" style={{ color: barColor }}>
+                    {progress.total >= 5 ? `${acc}% goed` : `${progress.total}x geoefend`}
                   </span>
                 </div>
                 <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
-                    style={{ width: `${pct}%`, backgroundColor: color }}
+                    style={{ width: progress.total >= 5 ? `${acc}%` : '0%', backgroundColor: barColor }}
                   />
+                </div>
+                <div className="flex justify-between mt-0.5">
+                  <span className="text-xs text-gray-300">{sublabel}</span>
+                  {progress.lastPlayed && (
+                    <span className="text-xs text-gray-300">
+                      {new Date(progress.lastPlayed).toLocaleDateString('nl-NL')}
+                    </span>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Tip voor thuis */}
+      {weakest && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-sm mb-6">
+          <h3 className="font-bold text-amber-800 mb-1">💡 Tip voor thuis</h3>
+          <p className="text-sm text-amber-700 mb-1">
+            <strong>{exerciseLabels[weakest.key].label}</strong> kan nog beter ({weakest.acc}% goed).
+          </p>
+          <p className="text-sm text-amber-600">{tipPerExercise[weakest.key]}</p>
+        </div>
+      )}
 
       {/* Badges */}
       {unlockedBadgeObjects.length > 0 && (
@@ -248,11 +298,21 @@ export default function OudersDashboard() {
 
       {/* Content */}
       {selectedProfile && selectedData ? (
-        <ProfileDetail
-          profile={selectedProfile}
-          data={selectedData}
-          onBack={() => setSelectedProfileId(null)}
-        />
+        <>
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={() => window.print()}
+              className="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-white transition-colors"
+            >
+              🖨️ Afdrukken
+            </button>
+          </div>
+          <ProfileDetail
+            profile={selectedProfile}
+            data={selectedData}
+            onBack={() => setSelectedProfileId(null)}
+          />
+        </>
       ) : (
         <motion.div
           className="space-y-4"
