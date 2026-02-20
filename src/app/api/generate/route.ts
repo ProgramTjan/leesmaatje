@@ -149,10 +149,11 @@ export async function POST(request: NextRequest) {
     const message = await client.messages.create({
       model: 'claude-3-5-haiku-latest',
       max_tokens: 4096,
+      system: getSystemPrompt(type as ExerciseType, level, count),
       messages: [
         {
           role: 'user',
-          content: getSystemPrompt(type as ExerciseType, level, count),
+          content: `Genereer nu ${count} oefeningen op niveau ${level}.`,
         },
       ],
     });
