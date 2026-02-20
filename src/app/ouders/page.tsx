@@ -14,7 +14,8 @@ type ProgressKey =
   | 'zinnenProgress'
   | 'flitslezenProgress'
   | 'spellingregelsProgress'
-  | 'woorddelenProgress';
+  | 'woorddelenProgress'
+  | 'rijmenProgress';
 
 const exerciseLabels: Record<ProgressKey, { label: string; color: string }> = {
   lettersProgress: { label: 'Letters', color: '#6c63ff' },
@@ -24,11 +25,13 @@ const exerciseLabels: Record<ProgressKey, { label: string; color: string }> = {
   flitslezenProgress: { label: 'Flitslezen', color: '#7c6aff' },
   spellingregelsProgress: { label: 'Spelling', color: '#a06cd5' },
   woorddelenProgress: { label: 'Woorddelen', color: '#34d399' },
+  rijmenProgress: { label: 'Rijmwoorden', color: '#f472b6' },
 };
 
 const progressKeys: ProgressKey[] = [
   'lettersProgress',
   'lettergrepenProgress',
+  'rijmenProgress',
   'woordenProgress',
   'zinnenProgress',
   'flitslezenProgress',
@@ -89,6 +92,7 @@ function accuracyLabel(acc: number, total: number): string {
 const tipPerExercise: Record<ProgressKey, string> = {
   lettersProgress: 'Oefen letters hardop samen: zeg de klank, schrijf de letter.',
   lettergrepenProgress: 'Klap lettergrepen mee bij alledaagse woorden, bijv. tijdens het eten.',
+  rijmenProgress: 'Speel rijmspelletjes: zoek samen woorden die rijmen op iets in de kamer.',
   woordenProgress: 'Lees samen korte boekjes en wijs moeilijke woorden aan.',
   zinnenProgress: 'Vertel om beurten een verhaaltje en let op de woordvolgorde.',
   flitslezenProgress: 'Schrijf woorden op kaartjes en oefen het snel herkennen.',

@@ -21,7 +21,7 @@ interface ExerciseDef {
   color: string;
   progressKey: keyof Pick<
     ReturnType<typeof useGameStore.getState>,
-    'lettersProgress' | 'lettergrepenProgress' | 'woordenProgress' | 'zinnenProgress' | 'flitslezenProgress' | 'spellingregelsProgress' | 'woorddelenProgress'
+    'lettersProgress' | 'lettergrepenProgress' | 'woordenProgress' | 'zinnenProgress' | 'flitslezenProgress' | 'spellingregelsProgress' | 'woorddelenProgress' | 'rijmenProgress'
   >;
   ageGroups: AgeGroup[];
 }
@@ -44,6 +44,15 @@ const allExercises: ExerciseDef[] = [
     href: '/oefenen/lettergrepen',
     color: 'from-[#ff6b9d] to-[#ff8a5c]',
     progressKey: 'lettergrepenProgress',
+    ageGroups: ['groep3-5'],
+  },
+  {
+    title: 'Rijmwoorden',
+    description: 'Welk woord rijmt? Luister en raad!',
+    emoji: '🎵',
+    href: '/oefenen/rijmen',
+    color: 'from-[#f472b6] to-[#fb923c]',
+    progressKey: 'rijmenProgress',
     ageGroups: ['groep3-5'],
   },
 

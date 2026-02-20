@@ -49,6 +49,7 @@ export interface ProfileData {
   flitslezenProgress: ExerciseProgress;
   spellingregelsProgress: ExerciseProgress;
   woorddelenProgress: ExerciseProgress;
+  rijmenProgress: ExerciseProgress;
   perfectRounds: number;
   unlockedBadges: string[];
   dyslexicFont: boolean;
@@ -69,6 +70,7 @@ const defaultProfileData = (): ProfileData => ({
   flitslezenProgress: emptyProgress(),
   spellingregelsProgress: emptyProgress(),
   woorddelenProgress: emptyProgress(),
+  rijmenProgress: emptyProgress(),
   perfectRounds: 0,
   unlockedBadges: [],
   dyslexicFont: false,
@@ -92,6 +94,7 @@ function extractProfileData(state: GameState): ProfileData {
     flitslezenProgress: state.flitslezenProgress,
     spellingregelsProgress: state.spellingregelsProgress,
     woorddelenProgress: state.woorddelenProgress,
+    rijmenProgress: state.rijmenProgress,
     perfectRounds: state.perfectRounds,
     unlockedBadges: state.unlockedBadges,
     dyslexicFont: state.dyslexicFont,
@@ -117,7 +120,8 @@ type ProgressKey =
   | 'zinnenProgress'
   | 'flitslezenProgress'
   | 'spellingregelsProgress'
-  | 'woorddelenProgress';
+  | 'woorddelenProgress'
+  | 'rijmenProgress';
 
 interface GameState extends ProfileData {
   // ── Profile management ──
@@ -151,6 +155,7 @@ interface GameState extends ProfileData {
   updateFlitslezenProgress: (correct: boolean, level?: number) => void;
   updateSpellingregelsProgress: (correct: boolean, level?: number) => void;
   updateWoorddelenProgress: (correct: boolean, level?: number) => void;
+  updateRijmenProgress: (correct: boolean, level?: number) => void;
 
   addPerfectRound: () => void;
 
@@ -355,6 +360,7 @@ export const useGameStore = create<GameState>()(
       updateFlitslezenProgress: (c, lvl) => set(makeProgressUpdater('flitslezenProgress')(c, lvl)),
       updateSpellingregelsProgress: (c, lvl) => set(makeProgressUpdater('spellingregelsProgress')(c, lvl)),
       updateWoorddelenProgress: (c, lvl) => set(makeProgressUpdater('woorddelenProgress')(c, lvl)),
+      updateRijmenProgress: (c, lvl) => set(makeProgressUpdater('rijmenProgress')(c, lvl)),
 
       addPerfectRound: () => set((s) => ({ perfectRounds: s.perfectRounds + 1 })),
 
@@ -407,7 +413,7 @@ export const useGameStore = create<GameState>()(
           s.lettersProgress.total + s.lettergrepenProgress.total +
           s.woordenProgress.total + s.zinnenProgress.total +
           s.flitslezenProgress.total + s.spellingregelsProgress.total +
-          s.woorddelenProgress.total
+          s.woorddelenProgress.total + s.rijmenProgress.total
         );
       },
       getTotalCorrect: () => {
@@ -416,7 +422,7 @@ export const useGameStore = create<GameState>()(
           s.lettersProgress.correct + s.lettergrepenProgress.correct +
           s.woordenProgress.correct + s.zinnenProgress.correct +
           s.flitslezenProgress.correct + s.spellingregelsProgress.correct +
-          s.woorddelenProgress.correct
+          s.woorddelenProgress.correct + s.rijmenProgress.correct
         );
       },
 
@@ -424,7 +430,7 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'leesmaatje-storage',
-      version: 4,
+      version: 5,
       partialize: (state) => {
         const savedProfiles = { ...state._savedProfiles };
         if (state.activeProfileId) {
@@ -446,6 +452,7 @@ export const useGameStore = create<GameState>()(
           flitslezenProgress: state.flitslezenProgress,
           spellingregelsProgress: state.spellingregelsProgress,
           woorddelenProgress: state.woorddelenProgress,
+          rijmenProgress: state.rijmenProgress,
           perfectRounds: state.perfectRounds,
           unlockedBadges: state.unlockedBadges,
           dyslexicFont: state.dyslexicFont,
@@ -527,6 +534,21 @@ export const useGameStore = create<GameState>()(
             }
           }
           return old;
+        }
+
+        if (version < 5) {
+          // v4 -> v5: add rijmenProgress
+          const old5 = old as Record<string, unknown>;
+          if (!old5.rijmenProgress) {
+            old5.rijmenProgress = emptyProgress();
+          }
+          const saved5 = (old5._savedProfiles as Record<string, ProfileData>) || {};
+          for (const pd of Object.values(saved5)) {
+            if (!pd.rijmenProgress) {
+              pd.rijmenProgress = emptyProgress();
+            }
+          }
+          return old5;
         }
 
         return persisted;
